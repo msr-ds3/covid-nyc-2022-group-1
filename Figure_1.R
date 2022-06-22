@@ -139,7 +139,7 @@ household <- household %>%
 
 mean(household$prop, na.rm = TRUE)
 
-ggplot(uninsured_18to64, aes(fill = prop)) + 
+ggplot(household, aes(fill = prop)) + 
   geom_sf(aes(geometry = geometry)) + 
   labs(title = "Proportion in household of 4 or more") +
   scale_fill_distiller(palette = "YlOrRd", 
@@ -205,5 +205,3 @@ ggplot(elderly, aes(fill = prop)) +
 # While most of the estimations are close to those recorded in the article, they are not exactly the same
 # and the mapping is not exactly the same (ggplot) bc we used "tract" instead of "zcta".
 # We could not figure out how to use "zcta".
-
-
