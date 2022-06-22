@@ -8,6 +8,7 @@ library(tidyverse)
 library(dplyr)
 library(modelr)
 library(sf)
+library(scales)
 ```
 
 # April 1, 2020 Cases
@@ -38,7 +39,7 @@ household_model
 april_1_cases_household <- april_1_cases_household %>%
   add_predictions(household_model)
 
-summary(household_model)
+household_r_square <- summary(household_model)$r.squared
 ```
 
 ### Uninsured 18 to 64
@@ -54,7 +55,7 @@ uninsured_model
 april_1_cases_uninsured <- april_1_cases_uninsured %>%
   add_predictions(uninsured_model)
 
-summary(uninsured_model)
+uninsured_r_square <- summary(uninsured_model)$r.squared
 ```
 
 ### Self-Identifying as White
@@ -70,7 +71,7 @@ white_model
 april_1_cases_white <- april_1_cases_white %>%
   add_predictions(white_model)
 
-summary(white_model)
+white_r_square <- summary(white_model)$r.squared
 ```
 
 ### Median Income
@@ -86,7 +87,7 @@ income_model
 april_1_cases_income <- april_1_cases_income %>%
   add_predictions(income_model)
 
-summary(income_model)
+income_r_square <- summary(income_model)$r.squared
 ```
 
 ### Using Bus for Commute
@@ -102,7 +103,7 @@ bus_model
 april_1_cases_bus <- april_1_cases_bus %>%
   add_predictions(bus_model)
 
-summary(bus_model)
+bus_r_square <- summary(bus_model)$r.squared
 ```
 
 ### Elderly
@@ -118,7 +119,7 @@ elderly_model
 april_1_cases_elderly <- april_1_cases_elderly %>%
   add_predictions(elderly_model)
 
-summary(elderly_model)
+elderly_r_square <- summary(elderly_model)$r.squared
 ```
 
 # Table 1 Multi-Variable Regression
@@ -146,5 +147,24 @@ multi_model
 april_1_cases_table1 <- april_1_cases_table1 %>%
   add_predictions(multi_model)
 
-summary(multi_model)
+multi_r_square <- summary(multi_model)$r.squared
 ```
+
+
+## Comparing R^2^ Values
+|Variable|Published|Our Estimate|
+|--|--|--|
+|Household|41%|`r round(household_r_square * 100, 0) `%|
+|Uninsured|38%|`r round(uninsured_r_square * 100, 0) `%|
+|White|34%|`r round(white_r_square * 100, 0) `%|
+|Income|32%|`r round(income_r_square * 100, 0) `%|
+|Mobility|19%| |
+|Bus|13%|`r round(bus_r_square * 100, 0) `%|
+|Elderly|3%|`r round(elderly_r_square * 100, 0) `%|
+|Multi|56%|`r round(multi_r_square * 100, 0) `%|
+
+
+
+
+
+

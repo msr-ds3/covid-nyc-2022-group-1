@@ -1,0 +1,23 @@
+---
+title: "Mobility Data"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(modelr)
+```
+
+# Loading the Data
+
+```{r}
+load('/data/safegraph/safegraph.Rdata')
+
+mobility <- safegraph %>%
+  filter(date >= "2020-03-01" & date <= "2020-04-30")
+```
+
+```{r}
+
+```
+
