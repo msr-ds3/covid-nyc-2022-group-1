@@ -87,6 +87,7 @@ master <- get_acs(geography = "zcta",
   inner_join(zipcodes, on = "GEOID") %>%
   transmute(GEOID, Borough, NAME, variable, estimate)
 
+save(master, file = 'master.RData')
 ```
 
 # Proportion of 18-64 Year Olds Uninsured
@@ -208,3 +209,10 @@ ggplot(elderly, aes(fill = prop)) +
                        direction = 1) +
   theme_void()
 ```
+
+# Saving Dataframes for Later Use
+
+```{r}
+save(uninsured_18to64, income, white, household, bus, elderly, file = 'ACSdata.RData')
+```
+

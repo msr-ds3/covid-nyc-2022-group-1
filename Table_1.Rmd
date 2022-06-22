@@ -1,0 +1,150 @@
+---
+title: "Covid Tests by Zip"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(dplyr)
+library(modelr)
+library(sf)
+```
+
+# April 1, 2020 Cases
+
+### Loading the Data
+
+```{r}
+april_1_cases <- read.csv("https://raw.githubusercontent.com/nychealth/coronavirus-data/097cbd70aa00eb635b17b177bc4546b2fce21895/tests-by-zcta.csv")
+
+april_1_cases <- april_1_cases %>%
+  mutate(GEOID = as.character(MODZCTA), prop_pos = Positive / Total)
+
+load("ACSdata.RData")
+```
+
+# Individual Regressions
+
+### 4 Plus Person Household
+
+```{r}
+april_1_cases_household <- inner_join(household, april_1_cases, by = "GEOID") %>%
+  transmute(GEOID, Borough, prop_four_plus = prop, prop_pos)
+
+household_model <- lm(prop_pos ~ prop_four_plus, april_1_cases_household)
+
+household_model
+
+april_1_cases_household <- april_1_cases_household %>%
+  add_predictions(household_model)
+
+summary(household_model)
+```
+
+### Uninsured 18 to 64
+
+```{r}
+april_1_cases_uninsured <- inner_join(uninsured_18to64, april_1_cases, by = "GEOID") %>%
+  transmute(GEOID, Borough, prop_uninsured = prop, prop_pos)
+
+uninsured_model <- lm(prop_pos ~ prop_uninsured, april_1_cases_uninsured)
+
+uninsured_model
+
+april_1_cases_uninsured <- april_1_cases_uninsured %>%
+  add_predictions(uninsured_model)
+
+summary(uninsured_model)
+```
+
+### Self-Identifying as White
+
+```{r}
+april_1_cases_white <- inner_join(white, april_1_cases, by = "GEOID") %>%
+  transmute(GEOID, Borough, prop_white = prop, prop_pos)
+
+white_model <- lm(prop_pos ~ prop_white, april_1_cases_white)
+
+white_model
+
+april_1_cases_white <- april_1_cases_white %>%
+  add_predictions(white_model)
+
+summary(white_model)
+```
+
+### Median Income
+
+```{r}
+april_1_cases_income <- inner_join(income, april_1_cases, by = "GEOID") %>%
+  transmute(GEOID, Borough, income = estimate, prop_pos)
+
+income_model <- lm(prop_pos ~ income, april_1_cases_income)
+
+income_model
+
+april_1_cases_income <- april_1_cases_income %>%
+  add_predictions(income_model)
+
+summary(income_model)
+```
+
+### Using Bus for Commute
+
+```{r}
+april_1_cases_bus <- inner_join(bus, april_1_cases, by = "GEOID") %>%
+  transmute(GEOID, Borough, prop_bus = prop, prop_pos)
+
+bus_model <- lm(prop_pos ~ prop_bus, april_1_cases_bus)
+
+bus_model
+
+april_1_cases_bus <- april_1_cases_bus %>%
+  add_predictions(bus_model)
+
+summary(bus_model)
+```
+
+### Elderly
+
+```{r}
+april_1_cases_elderly <- inner_join(elderly, april_1_cases, by = "GEOID") %>%
+  transmute(GEOID, Borough, prop_elderly = prop, prop_pos)
+
+elderly_model <- lm(prop_pos ~ prop_elderly, april_1_cases_elderly)
+
+elderly_model
+
+april_1_cases_elderly <- april_1_cases_elderly %>%
+  add_predictions(elderly_model)
+
+summary(elderly_model)
+```
+
+# Table 1 Multi-Variable Regression
+
+### Joining the Tables
+
+```{r}
+april_1_cases_table1 <- april_1_cases_household %>%
+  transmute(GEOID, prop_four_plus) %>%
+  inner_join(april_1_cases_uninsured, by  = "GEOID") %>%
+  transmute(GEOID, prop_four_plus, prop_uninsured) %>%
+  inner_join(april_1_cases_white, by = "GEOID") %>%
+  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white) %>%
+  inner_join(april_1_cases_income, by = "GEOID") %>%
+  transmute(GEOID, Borough, prop_four_plus, prop_uninsured, prop_white, income, prop_pos, geometry)
+```
+
+### Multi-Variable Regression
+
+```{r}
+multi_model <- lm(prop_pos ~ prop_four_plus + prop_uninsured + prop_white + poly(income), april_1_cases_table1)
+
+multi_model
+
+april_1_cases_table1 <- april_1_cases_table1 %>%
+  add_predictions(multi_model)
+
+summary(multi_model)
+```
