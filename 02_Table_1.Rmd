@@ -22,6 +22,8 @@ april_1_cases <- april_1_cases %>%
   mutate(GEOID = as.character(MODZCTA), prop_pos = Positive / Total)
 
 load("ACSdata.RData")
+
+load('/data/safegraph/safegraph.Rdata')
 ```
 
 # Individual Regressions
@@ -90,6 +92,48 @@ april_1_cases_income <- april_1_cases_income %>%
 income_r_square <- summary(income_model)$r.squared
 ```
 
+### Mobility
+
+```{r}
+median_daily_visits <- safegraph %>% 
+  filter(date >= "2020-02-01" & date <= "2020-02-28") %>%
+  group_by(postal_code) %>%
+  summarize(median_visits = median(avg_visits_per_day))
+```
+
+# Change in Mobility
+
+```{r}
+change_in_mobility <- mobility %>% 
+  left_join(median_daily_visits, by = "postal_code") %>%
+  mutate(change_in_mobility = (avg_visits_per_day - median_visits) / median_visits) 
+
+median_change_in_mobility <- change_in_mobility %>%
+  group_by(date) %>%
+  summarize(median_change_in_mobility = median(change_in_mobility, na.rm = TRUE),
+            Q1 = quantile(change_in_mobility, 0.25, na.rm = TRUE),
+            Q3 = quantile(change_in_mobility, 0.75, na.rm = TRUE))
+```
+
+```{r}
+mar_23_mobility <- change_in_mobility %>%
+  filter(date == "2020-03-23") %>%
+  mutate(GEOID = as.character(postal_code))
+
+april_1_cases_mobility <- inner_join(mar_23_mobility, april_1_cases, by = "GEOID") %>%
+  transmute(GEOID, date, prop_pos, change_in_mobility)
+
+mobility_model <- lm(prop_pos ~ change_in_mobility, april_1_cases_mobility)
+
+mobility_model
+
+april_1_cases_mobility <- april_1_cases_mobility %>%
+  add_predictions(mobility_model)
+
+mobility_r_square <- summary(mobility_model)$r.squared
+```
+
+
 ### Using Bus for Commute
 
 ```{r}
@@ -129,7 +173,7 @@ elderly_r_square <- summary(elderly_model)$r.squared
 ```{r}
 april_1_cases_table1 <- april_1_cases_household %>%
   transmute(GEOID, prop_four_plus) %>%
-  inner_join(april_1_cases_uninsured, by  = "GEOID") %>%
+  inner_join(april_1_cases_uninsured, by = "GEOID") %>%
   transmute(GEOID, prop_four_plus, prop_uninsured) %>%
   inner_join(april_1_cases_white, by = "GEOID") %>%
   transmute(GEOID, prop_four_plus, prop_uninsured, prop_white) %>%
@@ -137,7 +181,24 @@ april_1_cases_table1 <- april_1_cases_household %>%
   transmute(GEOID, Borough, prop_four_plus, prop_uninsured, prop_white, income, prop_pos, geometry)
 ```
 
-### Multi-Variable Regression
+```{r}
+april_1_cases_table2 <- april_1_cases_household %>%
+  transmute(GEOID, prop_four_plus) %>%
+  inner_join(april_1_cases_uninsured, by = "GEOID") %>%
+  transmute(GEOID, prop_four_plus, prop_uninsured) %>%
+  inner_join(april_1_cases_white, by = "GEOID") %>%
+  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white) %>%
+  inner_join(april_1_cases_income, by = "GEOID") %>%
+  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white, income, geometry) %>%
+  inner_join(april_1_cases_elderly, by = "GEOID") %>%
+  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white, income, prop_elderly, geometry) %>%
+  inner_join(april_1_cases_bus, by = "GEOID") %>%
+  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white, income, prop_elderly, prop_bus, geometry) %>%
+  inner_join(april_1_cases_mobility, by = "GEOID") %>%
+  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white, income, prop_pos, prop_elderly, prop_bus, change_in_mobility, geometry)
+```
+
+### Multi-Variable Regression - Table 1
 
 ```{r}
 multi_model <- lm(prop_pos ~ prop_four_plus + prop_uninsured + prop_white + poly(income), april_1_cases_table1)
@@ -150,6 +211,18 @@ april_1_cases_table1 <- april_1_cases_table1 %>%
 multi_r_square <- summary(multi_model)$r.squared
 ```
 
+### Multi-Variable Regression - Table 2
+
+```{r}
+multi_model_2 <- lm(prop_pos ~ prop_elderly + prop_bus + poly(income) + prop_white + prop_uninsured + prop_four_plus + change_in_mobilty, april_1_cases_table2)
+
+multi_model_2
+
+april_1_cases_table2 <- april_1_cases_table2 %>%
+  add_predictions(multi_model_2)
+
+multi2_r_square <- summary(multi_model_2)$r.squared
+```
 
 ## Comparing R^2^ Values
 |Variable|Published|Our Estimate|
@@ -158,7 +231,7 @@ multi_r_square <- summary(multi_model)$r.squared
 |Uninsured|38%|`r round(uninsured_r_square * 100, 0) `%|
 |White|34%|`r round(white_r_square * 100, 0) `%|
 |Income|32%|`r round(income_r_square * 100, 0) `%|
-|Mobility|19%| |
+|Mobility|19%|`r round(mobility_r_square * 100, 0) `% |
 |Bus|13%|`r round(bus_r_square * 100, 0) `%|
 |Elderly|3%|`r round(elderly_r_square * 100, 0) `%|
 |Multi|56%|`r round(multi_r_square * 100, 0) `%|

@@ -1,0 +1,455 @@
+---
+title: "Group 1 Covid"
+author: "Shoshana Farber and Christopher Stewart"
+date: "6/23/2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+library(tidycensus)
+library(tidyverse)
+library(tigris, options(tigris_use_cache = TRUE))
+library(sf)
+library(dplyr)
+library(modelr)
+library(scales)
+
+# install.packages("sf")
+```
+
+# Getting the ACS Data
+
+```{r}
+# census_api_key("9f57d911433df5106be7bad43607b75e36794f44", install = TRUE)
+
+readRenviron("~/.Renviron")
+```
+
+# Figuring out the Variables
+
+```{r}
+# Insurance
+# load_variables(2016, "acs5") %>% filter(grepl("B27010", name)) %>% View()
+
+# Median Income
+# load_variables(2016, "acs5") %>% filter(grepl("B19013", name)) %>% View()
+
+# Race
+# load_variables(2016, "acs5") %>% filter(grepl("B02001", name)) %>% View()
+
+# Households
+# load_variables(2016, "acs5") %>% filter(grepl("B11016", name)) %>% View()
+
+# Commuters
+# load_variables(2016, "acs5") %>% filter(grepl("B08301", name)) %>% View()
+
+# Age
+# load_variables(2016, "acs5") %>% filter(grepl("B01001", name)) %>% View()
+```
+
+```{r}
+zipcodes <- read_csv("Data/nyc-zip-codes") %>%
+  mutate(GEOID = as.character(ZipCode))
+
+# master <- get_acs(geography = "zcta",
+#                   variables = c(total_18to34 = "B27010_018", 
+#                                 uninsured_18to34 = "B27010_033", 
+#                                 total_35to64 = "B27010_034", 
+#                                 uninsured_35to64 = "B27010_050",
+#                                 median_income = "B19013_001",
+#                                 total_race = "B02001_001", 
+#                                 identify_white = "B02001_002",
+#                                 total_household = "B11016_001", 
+#                                 fam_four_household = "B11016_005", 
+#                                 fam_five_household = "B11016_006", 
+#                                 fam_six_household = "B11016_007", 
+#                                 fam_seven_plus_household = "B11016_008", 
+#                                 nonfam_four_household = "B11016_013", 
+#                                 nonfam_five_household = "B11016_014", 
+#                                 nonfam_six_household = "B11016_015", 
+#                                 nonfam_seven_plus_household = "B11016_016",
+#                                 total_transport = "B08301_001",
+#                                 total_public = "B08301_010", 
+#                                 bus = "B08301_011",
+#                                 total_age = "B01001_001", 
+#                                 male_65to66 = "B01001_020", 
+#                                 male_67to69 = "B01001_021", 
+#                                 male_70to74 = "B01001_022", 
+#                                 male_75to79 = "B01001_023", 
+#                                 male_80to84 = "B01001_024", 
+#                                 male_85plus = "B01001_025",
+#                                 female_65to66 = "B01001_044", 
+#                                 female_67to69 = "B01001_045", 
+#                                 female_70to74 = "B01001_046", 
+#                                 female_75to79 = "B01001_047", 
+#                                 female_80to84 = "B01001_048", 
+#                                 female_85plus = "B01001_049"),
+#                   state = "NY",
+#                   year = 2016,
+#                   geometry = TRUE) %>%
+#   inner_join(zipcodes, on = "GEOID") %>%
+#   transmute(GEOID, Borough, NAME, variable, estimate)
+
+# save(master, file = 'master.RData')
+
+load("Data/master.RData")
+```
+
+# Figure 1
+
+### Proportion of 18-64 Year Olds Uninsured
+
+```{r}
+uninsured_18to64 <- master %>%
+  pivot_wider(names_from = variable, values_from = estimate) %>%
+  transmute(GEOID, Borough, NAME, geometry, total = total_18to34 + total_35to64, uninsured = uninsured_18to34 + uninsured_35to64) %>%
+  mutate(prop = uninsured / total)
+
+median(uninsured_18to64$prop, na.rm = TRUE)
+```
+
+```{r}
+ggplot(uninsured_18to64, aes(fill = prop)) +
+  geom_sf(aes(geometry = geometry)) +
+  labs(title = "Proportion of 18 to 64 year olds uninsured") +
+  scale_fill_distiller(palette = "YlOrRd", 
+                       direction = 1) +
+  theme_void()
+```
+
+### Median Income
+
+```{r}
+income <- master %>%
+  filter(variable == "median_income")
+
+median(income$estimate, na.rm = TRUE)
+```
+
+```{r}
+ggplot(income, aes(fill = estimate)) + 
+  geom_sf(aes(geometry = geometry)) + 
+  labs(title = "Median income") +
+  scale_fill_distiller(palette = "YlGn", 
+                       direction = 1) +
+  theme_void()
+```
+
+### Proportion of Population Self-Identifying as White
+
+```{r}
+white <- master %>%
+  pivot_wider(names_from = variable, values_from = estimate) %>%
+  transmute(GEOID, Borough, NAME, geometry, total = total_race, white = identify_white) %>%
+  mutate(prop = white / total)
+
+median(white$prop, na.rm = TRUE)
+```
+
+```{r}
+ggplot(white, aes(fill = prop)) + 
+  geom_sf(aes(geometry = geometry)) + 
+  labs(title = "Proportion of people who self-identify as white") +
+  scale_fill_distiller(palette = "Purples", 
+                       direction = 1) +
+  theme_void()
+```
+
+### Proportion in Households of 4 or More
+
+```{r}
+household <- master %>%
+  pivot_wider(names_from = variable, values_from = estimate) %>%
+  transmute(GEOID, Borough, NAME, geometry, total = total_household, 
+            four_plus = fam_four_household + fam_five_household + fam_six_household + fam_seven_plus_household + nonfam_four_household + nonfam_five_household + nonfam_six_household + nonfam_seven_plus_household) %>%
+  mutate(prop = four_plus / total)
+
+median(household$prop, na.rm = TRUE)
+```
+
+```{r}
+ggplot(household, aes(fill = prop)) + 
+  geom_sf(aes(geometry = geometry)) + 
+  labs(title = "Proportion in household of 4 or more") +
+  scale_fill_distiller(palette = "YlOrRd", 
+                       direction = 1) +
+  theme_void()
+```
+
+### Proportion that Commutes by Bus
+
+```{r}
+bus <- master %>%
+  pivot_wider(names_from = variable, values_from = estimate) %>%
+  transmute(GEOID, Borough, NAME, geometry, total = total_transport, bus) %>%
+  mutate(prop = bus / total)
+
+median(bus$prop, na.rm = TRUE)
+```
+
+```{r}
+ggplot(bus, aes(fill = prop)) + 
+  geom_sf(aes(geometry = geometry)) + 
+  labs(title = "Proportion of population that commuted by bus") +
+  scale_fill_distiller(palette = "YlOrRd", 
+                       direction = 1) +
+  theme_void()
+```
+
+### Proportion 65 and Older
+
+```{r}
+elderly <-  master %>%
+  pivot_wider(names_from = variable, values_from = estimate) %>%
+  transmute(GEOID, Borough, NAME, geometry, total = total_age, 
+            elderly = male_65to66 + male_67to69 + male_70to74 + male_75to79 + male_80to84 + male_85plus + female_65to66 + female_67to69 + female_70to74 + female_75to79 + female_80to84 + female_85plus) %>%
+  mutate(prop = elderly / total)
+
+median(elderly$prop, na.rm = TRUE)
+```
+
+```{r}
+ggplot(elderly, aes(fill = prop)) + 
+  geom_sf(aes(geometry = geometry)) + 
+  labs(title = "Proportion of population 65+ years in age") +
+  scale_fill_distiller(palette = "YlOrRd", 
+                       direction = 1) +
+  theme_void()
+```
+
+```{r}
+# save(uninsured_18to64, income, white, household, bus, elderly, file = 'ACSdata.RData')
+```
+
+# Figure 2
+
+### Loading the Data
+
+```{r}
+april_1_cases <- read.csv("https://raw.githubusercontent.com/nychealth/coronavirus-data/097cbd70aa00eb635b17b177bc4546b2fce21895/tests-by-zcta.csv")
+
+april_1_cases <- april_1_cases %>%
+  mutate(GEOID = as.character(MODZCTA), prop_pos = Positive / Total)
+
+load("Data/ACSdata.RData")
+
+load('/data/safegraph/safegraph.Rdata')
+
+feb_mobility <- safegraph %>%
+  filter(date >= "2020-03-01" & date <= "2020-04-30")
+```
+
+### February Baseline for Mobility
+
+```{r}
+median_daily_visits <- safegraph %>% 
+  filter(date >= "2020-02-01" & date <= "2020-02-28") %>%
+  group_by(postal_code) %>%
+  summarize(median_visits = median(avg_visits_per_day))
+```
+
+### Change in Mobility
+
+```{r}
+change_in_mobility <- feb_mobility %>% 
+  left_join(median_daily_visits, by = "postal_code") %>%
+  mutate(change_in_mobility = (avg_visits_per_day - median_visits) / median_visits) 
+
+median_change_in_mobility <- change_in_mobility %>%
+  group_by(date) %>%
+  summarize(median_change_in_mobility = median(change_in_mobility, na.rm = TRUE),
+            Q1 = quantile(change_in_mobility, 0.25, na.rm = TRUE),
+            Q3 = quantile(change_in_mobility, 0.75, na.rm = TRUE))
+```
+
+### Plotting Change in Mobility
+
+```{r}
+change_in_mobility %>%
+  filter(change_in_mobility < 1) %>%
+ggplot() +
+  geom_violin(aes(y = as.factor(date), x = change_in_mobility), color = "orange") +
+ geom_pointrange(aes(y = as.factor(date), xmin = Q1, xmax = Q3, x = median_change_in_mobility), median_change_in_mobility, color = "red") +
+  xlim(-1, 1.25) + 
+  labs(x = "Change in mobility relative to baseline", y = "Date")
+```
+
+# April 1, 2020 Cases
+
+# Individual Regressions
+
+### 4 Plus Person Household
+
+```{r}
+april_1_cases_household <- inner_join(household, april_1_cases, by = "GEOID") %>%
+  transmute(GEOID, Borough, prop_four_plus = prop, prop_pos)
+
+household_model <- lm(prop_pos ~ prop_four_plus, april_1_cases_household)
+
+april_1_cases_household <- april_1_cases_household %>%
+  add_predictions(household_model)
+
+household_r_square <- summary(household_model)$r.squared
+```
+
+### Uninsured 18 to 64
+
+```{r}
+april_1_cases_uninsured <- inner_join(uninsured_18to64, april_1_cases, by = "GEOID") %>%
+  transmute(GEOID, Borough, prop_uninsured = prop, prop_pos)
+
+uninsured_model <- lm(prop_pos ~ prop_uninsured, april_1_cases_uninsured)
+
+april_1_cases_uninsured <- april_1_cases_uninsured %>%
+  add_predictions(uninsured_model)
+
+uninsured_r_square <- summary(uninsured_model)$r.squared
+```
+
+### Self-Identifying as White
+
+```{r}
+april_1_cases_white <- inner_join(white, april_1_cases, by = "GEOID") %>%
+  transmute(GEOID, Borough, prop_white = prop, prop_pos)
+
+white_model <- lm(prop_pos ~ prop_white, april_1_cases_white)
+
+april_1_cases_white <- april_1_cases_white %>%
+  add_predictions(white_model)
+
+white_r_square <- summary(white_model)$r.squared
+```
+
+### Median Income
+
+```{r}
+april_1_cases_income <- inner_join(income, april_1_cases, by = "GEOID") %>%
+  transmute(GEOID, Borough, income = estimate, prop_pos)
+
+income_model <- lm(prop_pos ~ income, april_1_cases_income)
+
+april_1_cases_income <- april_1_cases_income %>%
+  add_predictions(income_model)
+
+income_r_square <- summary(income_model)$r.squared
+```
+
+### Mobility
+
+```{r}
+mar_23_mobility <- change_in_mobility %>%
+  filter(date == "2020-03-23") %>%
+  mutate(GEOID = as.character(postal_code))
+
+april_1_cases_mobility <- inner_join(mar_23_mobility, april_1_cases, by = "GEOID") %>%
+  transmute(GEOID, date, prop_pos, change_in_mobility)
+
+mobility_model <- lm(prop_pos ~ change_in_mobility, april_1_cases_mobility)
+
+april_1_cases_mobility <- april_1_cases_mobility %>%
+  add_predictions(mobility_model)
+
+mobility_r_square <- summary(mobility_model)$r.squared
+```
+
+
+### Using Bus for Commute
+
+```{r}
+april_1_cases_bus <- inner_join(bus, april_1_cases, by = "GEOID") %>%
+  transmute(GEOID, Borough, prop_bus = prop, prop_pos)
+
+bus_model <- lm(prop_pos ~ prop_bus, april_1_cases_bus)
+
+april_1_cases_bus <- april_1_cases_bus %>%
+  add_predictions(bus_model)
+
+bus_r_square <- summary(bus_model)$r.squared
+```
+
+### Elderly
+
+```{r}
+april_1_cases_elderly <- inner_join(elderly, april_1_cases, by = "GEOID") %>%
+  transmute(GEOID, Borough, prop_elderly = prop, prop_pos)
+
+elderly_model <- lm(prop_pos ~ prop_elderly, april_1_cases_elderly)
+
+april_1_cases_elderly <- april_1_cases_elderly %>%
+  add_predictions(elderly_model)
+
+elderly_r_square <- summary(elderly_model)$r.squared
+```
+
+# Table 1 Multi-Variable Regression
+
+### Joining the Tables
+
+```{r}
+april_1_cases_table1 <- april_1_cases_household %>%
+  transmute(GEOID, prop_four_plus) %>%
+  inner_join(april_1_cases_uninsured, by = "GEOID") %>%
+  transmute(GEOID, prop_four_plus, prop_uninsured) %>%
+  inner_join(april_1_cases_white, by = "GEOID") %>%
+  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white) %>%
+  inner_join(april_1_cases_income, by = "GEOID") %>%
+  transmute(GEOID, Borough, prop_four_plus, prop_uninsured, prop_white, income, prop_pos, geometry)
+```
+
+```{r}
+april_1_cases_table2 <- april_1_cases_household %>%
+  transmute(GEOID, prop_four_plus) %>%
+  inner_join(april_1_cases_uninsured, by = "GEOID") %>%
+  transmute(GEOID, prop_four_plus, prop_uninsured) %>%
+  inner_join(april_1_cases_white, by = "GEOID") %>%
+  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white) %>%
+  inner_join(april_1_cases_income, by = "GEOID") %>%
+  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white, income, geometry) %>%
+  inner_join(april_1_cases_elderly, by = "GEOID") %>%
+  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white, income, prop_elderly, geometry) %>%
+  inner_join(april_1_cases_bus, by = "GEOID") %>%
+  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white, income, prop_elderly, prop_bus, geometry) %>%
+  inner_join(april_1_cases_mobility, by = "GEOID") %>%
+  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white, income, prop_pos, prop_elderly, prop_bus, change_in_mobility, geometry)
+```
+
+### Multi-Variable Regression - Table 1
+
+```{r}
+multi_model <- lm(prop_pos ~ prop_four_plus + prop_uninsured + prop_white + poly(income), april_1_cases_table1)
+
+april_1_cases_table1 <- april_1_cases_table1 %>%
+  add_predictions(multi_model)
+
+summary(multi_model)
+
+multi_r_square <- summary(multi_model)$r.squared
+```
+
+### Multi-Variable Regression - Table 2
+
+```{r}
+multi_model_2 <- lm(prop_pos ~ prop_elderly + prop_bus + poly(income) + prop_white + prop_uninsured + prop_four_plus + change_in_mobility, april_1_cases_table2)
+
+april_1_cases_table2 <- april_1_cases_table2 %>%
+  add_predictions(multi_model_2)
+
+summary(multi_model_2)
+
+multi2_r_square <- summary(multi_model_2)$r.squared
+```
+
+## Comparing R^2^ Values
+|Variable|Published|Our Estimate|
+|:--:|:--:|:--:|
+|Household|41%|`r round(household_r_square * 100, 0) `%|
+|Uninsured|38%|`r round(uninsured_r_square * 100, 0) `%|
+|White|34%|`r round(white_r_square * 100, 0) `%|
+|Income|32%|`r round(income_r_square * 100, 0) `%|
+|Mobility|19%|`r round(mobility_r_square * 100, 0) `%|
+|Bus|13%|`r round(bus_r_square * 100, 0) `%|
+|Elderly|3%|`r round(elderly_r_square * 100, 0) `%|
+|Multi Table 1|56%|`r round(multi_r_square * 100, 0) `%|
+|Multi Table 2|57%|`r round(multi2_r_square * 100, 0) `%|
