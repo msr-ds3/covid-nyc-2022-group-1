@@ -116,7 +116,7 @@ ggplot(uninsured_18to64, aes(fill = prop)) +
 income <- master %>%
   filter(variable == "median_income")
 
-mean(income$estimate, na.rm = TRUE)
+median(income$estimate, na.rm = TRUE)
 ```
 
 ```{r}
@@ -136,7 +136,7 @@ white <- master %>%
   transmute(GEOID, Borough, NAME, geometry, total = total_race, white = identify_white) %>%
   mutate(prop = white / total)
 
-mean(white$prop, na.rm = TRUE)
+median(white$prop, na.rm = TRUE)
 ```
 
 ```{r}
@@ -157,7 +157,7 @@ household <- master %>%
             four_plus = fam_four_household + fam_five_household + fam_six_household + fam_seven_plus_household + nonfam_four_household + nonfam_five_household + nonfam_six_household + nonfam_seven_plus_household) %>%
   mutate(prop = four_plus / total)
 
-mean(household$prop, na.rm = TRUE)
+median(household$prop, na.rm = TRUE)
 ```
 
 ```{r}
@@ -177,7 +177,7 @@ bus <- master %>%
   transmute(GEOID, Borough, NAME, geometry, total = total_transport, bus) %>%
   mutate(prop = bus / total)
 
-mean(bus$prop, na.rm = TRUE)
+median(bus$prop, na.rm = TRUE)
 ```
 
 ```{r}
@@ -198,7 +198,7 @@ elderly <-  master %>%
             elderly = male_65to66 + male_67to69 + male_70to74 + male_75to79 + male_80to84 + male_85plus + female_65to66 + female_67to69 + female_70to74 + female_75to79 + female_80to84 + female_85plus) %>%
   mutate(prop = elderly / total)
 
-mean(elderly$prop, na.rm = TRUE)
+median(elderly$prop, na.rm = TRUE)
 ```
 
 ```{r}
