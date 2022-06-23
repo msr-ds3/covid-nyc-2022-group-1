@@ -3,4 +3,4 @@
 # downloads nyc zipcodes
 #
 
-curl https://github.com/erikgregorywebb/nyc-housing/blob/master/Data/nyc-zip-codes.csv > Data/nyc-zip-codes.csv
+curl https://raw.githubusercontent.com/erikgregorywebb/nyc-housing/master/Data/nyc-zip-codes.csv > Data/nyc-zip-codes.csv
