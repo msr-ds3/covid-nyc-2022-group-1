@@ -50,7 +50,7 @@ readRenviron("~/.Renviron")
 ```
 
 ```{r}
-zipcodes <- read_csv("Data/nyc-zip-codes") %>%
+zipcodes <- read_csv("Data/nyc-zip-codes.csv") %>%
   mutate(GEOID = as.character(ZipCode))
 
 # master <- get_acs(geography = "zcta",
@@ -92,7 +92,7 @@ zipcodes <- read_csv("Data/nyc-zip-codes") %>%
 #   inner_join(zipcodes, on = "GEOID") %>%
 #   transmute(GEOID, Borough, NAME, variable, estimate)
 
-# save(master, file = 'master.RData')
+# save(master, file = 'Data/master.RData')
 
 load("Data/master.RData")
 ```
@@ -220,7 +220,7 @@ ggplot(elderly, aes(fill = prop)) +
 ```
 
 ```{r}
-# save(uninsured_18to64, income, white, household, bus, elderly, file = 'ACSdata.RData')
+# save(uninsured_18to64, income, white, household, bus, elderly, file = 'Data/ACSdata.RData')
 ```
 
 # Figure 2
@@ -228,7 +228,7 @@ ggplot(elderly, aes(fill = prop)) +
 ### Loading the Data
 
 ```{r}
-april_1_cases <- read.csv("https://raw.githubusercontent.com/nychealth/coronavirus-data/097cbd70aa00eb635b17b177bc4546b2fce21895/tests-by-zcta.csv")
+april_1_cases <- read_csv("Data/april-1-cases.csv")
 
 april_1_cases <- april_1_cases %>%
   mutate(GEOID = as.character(MODZCTA), prop_pos = Positive / Total)
@@ -431,7 +431,7 @@ multi_r_square <- summary(multi_model)$r.squared
 ### Multi-Variable Regression - Table 2
 
 ```{r}
-multi_model_2 <- lm(prop_pos ~ prop_elderly + prop_bus + poly(income) + prop_white + prop_uninsured + prop_four_plus + change_in_mobility, april_1_cases_table2)
+multi_model_2 <- lm(prop_pos ~ prop_elderly + prop_bus + poly(income) + prop_white + prop_uninsured + prop_four_plus, april_1_cases_table2)
 
 april_1_cases_table2 <- april_1_cases_table2 %>%
   add_predictions(multi_model_2)
@@ -439,6 +439,15 @@ april_1_cases_table2 <- april_1_cases_table2 %>%
 summary(multi_model_2)
 
 multi2_r_square <- summary(multi_model_2)$r.squared
+
+multi_model_mobility <- lm(prop_pos ~ prop_elderly + prop_bus + poly(income) + prop_white + prop_uninsured + prop_four_plus + change_in_mobility, april_1_cases_table2)
+
+april_1_cases_table2 <- april_1_cases_table2 %>%
+  add_predictions(multi_model_mobility)
+
+summary(multi_model_mobility)
+
+multi_mobility_r_square <- summary(multi_model_mobility)$r.squared
 ```
 
 ## Comparing R^2^ Values
@@ -453,3 +462,4 @@ multi2_r_square <- summary(multi_model_2)$r.squared
 |Elderly|3%|`r round(elderly_r_square * 100, 0) `%|
 |Multi Table 1|56%|`r round(multi_r_square * 100, 0) `%|
 |Multi Table 2|57%|`r round(multi2_r_square * 100, 0) `%|
+|Multi Table 2 + Mobility|57%|`r round(multi_mobility_r_square * 100, 0) `%|
