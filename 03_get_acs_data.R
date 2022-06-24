@@ -10,7 +10,7 @@ library(dplyr)
 # Getting the ACS data
 
 # Insert your own census API key below
-# census_api_key("9f57d911433df5106be7bad43607b75e36794f44", install = TRUE)
+# census_api_key("<your_key>", install = TRUE)
 
 readRenviron("~/.Renviron")
 
