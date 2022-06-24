@@ -5,7 +5,7 @@
 Based on the article, _Differential COVID-19 case positivity in New York City 
 neighborhoods: Socioeconomic factors and mobility_ by Matthew Lamb, Sasikiran Kandula, and Jeffrey Shaman (2020). 
 
-In the Figure 1 section, we created six maps to replicate the Figure 1 maps in the article. We used the ACS data to plot the proportion of 18-64 year olds who are uninsured (14%), the median income ($59,520), the proportion of the population self-identifying as white (48%), the proportion of the population in households of 4 or more (24%), the proportion of commuters who traveled by bus (10%), and the proportion of the population 65 and older (13%). 
+In the Figure 1 section, we created six maps to replicate the Figure 1 maps in the article. We used the ACS data to plot the proportion of 18-64 year olds who are uninsured (14%), the median income ($59,355), the proportion of the population self-identifying as white (48%), the proportion of the population in households of 4 or more (25%), the proportion of commuters who traveled by bus (10%), and the proportion of the population 65 and older (13%). 
 
 In the Figure 2 section, we plotted the change in mobility in March and April, using February as a baseline. 
 
@@ -21,5 +21,5 @@ We then performed the individual regressions that were mentioned in the articles
 
 ### Generating the Final Report
 
-- Use `04_Group_1_Final_Report.Rmd` to generate the final report with the maps and regressions. 
+- Use `Group_1_Final_Report.Rmd` to generate the final report with the maps and regressions. 
 

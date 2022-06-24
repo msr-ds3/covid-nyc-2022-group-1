@@ -23,6 +23,9 @@ library(scales)
 
 ```{r}
 load("Data/master.RData")
+
+master <- master %>%
+  filter(GEOID != 11005) # filtering out an outlier zipcode
 ```
 
 # Figure 1
@@ -44,22 +47,23 @@ ggplot(uninsured_18to64, aes(fill = prop)) +
   labs(title = "Proportion of 18 to 64 year olds uninsured") +
   scale_fill_distiller(palette = "YlOrRd", 
                        direction = 1) +
-  theme_void()
+  theme_void() 
 ```
 
 ### Median Income
 
 ```{r}
 income <- master %>%
-  filter(variable == "median_income")
+  filter(variable == "median_income") %>%
+  mutate(income_mill = estimate / 1000000)
 
 median(income$estimate, na.rm = TRUE)
 ```
 
 ```{r}
-ggplot(income, aes(fill = estimate)) + 
+ggplot(income, aes(fill = income_mill)) + 
   geom_sf(aes(geometry = geometry)) + 
-  labs(title = "Median income") +
+  labs(title = "Median income (in millions)") +
   scale_fill_distiller(palette = "YlGn", 
                        direction = 1) +
   theme_void()
@@ -133,7 +137,8 @@ elderly <-  master %>%
   pivot_wider(names_from = variable, values_from = estimate) %>%
   transmute(GEOID, Borough, NAME, geometry, total = total_age, 
             elderly = male_65to66 + male_67to69 + male_70to74 + male_75to79 + male_80to84 + male_85plus + female_65to66 + female_67to69 + female_70to74 + female_75to79 + female_80to84 + female_85plus) %>%
-  mutate(prop = elderly / total)
+  mutate(prop = elderly / total) %>%
+  filter(prop < 0.8)
 
 median(elderly$prop, na.rm = TRUE)
 ```
@@ -152,14 +157,21 @@ ggplot(elderly, aes(fill = prop)) +
 ### Loading the Data
 
 ```{r}
-april_1_cases <- read_csv("Data/april-1-cases.csv")
+april_1_cases <- read_csv("Data/april-1-cases.csv", show_col_types = FALSE)
 
 april_1_cases <- april_1_cases %>%
   mutate(GEOID = as.character(MODZCTA), prop_pos = Positive / Total)
 
 load('/data/safegraph/safegraph.Rdata')
 
-feb_mobility <- safegraph %>%
+zipcodes <- read_csv("Data/nyc-zip-codes.csv") %>%
+  mutate(GEOID = as.character(ZipCode))
+
+mobility <- safegraph %>%
+  mutate(GEOID = as.character(postal_code)) %>%
+  inner_join(zipcodes, by = "GEOID")
+
+feb_mobility <- mobility %>%
   filter(date >= "2020-03-01" & date <= "2020-04-30")
 ```
 
@@ -184,6 +196,9 @@ median_change_in_mobility <- change_in_mobility %>%
   summarize(median_change_in_mobility = median(change_in_mobility, na.rm = TRUE),
             Q1 = quantile(change_in_mobility, 0.25, na.rm = TRUE),
             Q3 = quantile(change_in_mobility, 0.75, na.rm = TRUE))
+
+change_in_mobility <- change_in_mobility %>%
+  filter(abs(change_in_mobility) < 1.25)
 ```
 
 ### Plotting Change in Mobility
@@ -248,9 +263,9 @@ white_r_square <- summary(white_model)$r.squared
 
 ```{r}
 april_1_cases_income <- inner_join(income, april_1_cases, by = "GEOID") %>%
-  transmute(GEOID, Borough, income = estimate, prop_pos)
+  transmute(GEOID, Borough, income_mill, prop_pos)
 
-income_model <- lm(prop_pos ~ income, april_1_cases_income)
+income_model <- lm(prop_pos ~ income_mill, april_1_cases_income)
 
 april_1_cases_income <- april_1_cases_income %>%
   add_predictions(income_model)
@@ -306,7 +321,7 @@ elderly_r_square <- summary(elderly_model)$r.squared
 
 ## Comparing R^2^ Values
 
-|Variable|Published|Our Estimate|
+|Variable|Published| Our Estimate|
 |:--:|:--:|:--:|
 |Household|41%|`r round(household_r_square * 100, 0) `%|
 |Uninsured|38%|`r round(uninsured_r_square * 100, 0) `%|
@@ -328,7 +343,7 @@ april_1_cases_table1 <- april_1_cases_household %>%
   inner_join(april_1_cases_white, by = "GEOID") %>%
   transmute(GEOID, prop_four_plus, prop_uninsured, prop_white) %>%
   inner_join(april_1_cases_income, by = "GEOID") %>%
-  transmute(GEOID, Borough, prop_four_plus, prop_uninsured, prop_white, income, prop_pos, geometry)
+  transmute(GEOID, Borough, prop_four_plus, prop_uninsured, prop_white, income_mill, prop_pos, geometry)
 ```
 
 ```{r}
@@ -339,19 +354,19 @@ april_1_cases_table2 <- april_1_cases_household %>%
   inner_join(april_1_cases_white, by = "GEOID") %>%
   transmute(GEOID, prop_four_plus, prop_uninsured, prop_white) %>%
   inner_join(april_1_cases_income, by = "GEOID") %>%
-  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white, income, geometry) %>%
+  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white, income_mill, geometry) %>%
   inner_join(april_1_cases_elderly, by = "GEOID") %>%
-  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white, income, prop_elderly, geometry) %>%
+  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white, income_mill, prop_elderly, geometry) %>%
   inner_join(april_1_cases_bus, by = "GEOID") %>%
-  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white, income, prop_elderly, prop_bus, geometry) %>%
+  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white, income_mill, prop_elderly, prop_bus, geometry) %>%
   inner_join(april_1_cases_mobility, by = "GEOID") %>%
-  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white, income, prop_pos, prop_elderly, prop_bus, change_in_mobility, geometry)
+  transmute(GEOID, prop_four_plus, prop_uninsured, prop_white, income_mill, prop_pos, prop_elderly, prop_bus, change_in_mobility, geometry)
 ```
 
 ### Multi-Variable Regression - Table 1
 
 ```{r}
-multi_model <- lm(prop_pos ~ prop_four_plus + prop_uninsured + prop_white + poly(income), april_1_cases_table1)
+multi_model <- lm(prop_pos ~ prop_four_plus + prop_uninsured + prop_white + income_mill, april_1_cases_table1)
 
 april_1_cases_table1 <- april_1_cases_table1 %>%
   add_predictions(multi_model)
@@ -364,7 +379,7 @@ multi_r_square <- summary(multi_model)$r.squared
 ### Multi-Variable Regression - Table 2
 
 ```{r}
-multi_model_2 <- lm(prop_pos ~ prop_elderly + prop_bus + poly(income) + prop_white + prop_uninsured + prop_four_plus, april_1_cases_table2)
+multi_model_2 <- lm(prop_pos ~ prop_elderly + prop_bus + income_mill + prop_white + prop_uninsured + prop_four_plus, april_1_cases_table2)
 
 april_1_cases_table2 <- april_1_cases_table2 %>%
   add_predictions(multi_model_2)
@@ -373,7 +388,7 @@ summary(multi_model_2)
 
 multi2_r_square <- summary(multi_model_2)$r.squared
 
-multi_model_mobility <- lm(prop_pos ~ prop_elderly + prop_bus + poly(income) + prop_white + prop_uninsured + prop_four_plus + change_in_mobility, april_1_cases_table2)
+multi_model_mobility <- lm(prop_pos ~ prop_elderly + prop_bus + income_mill + prop_white + prop_uninsured + prop_four_plus + change_in_mobility, april_1_cases_table2)
 
 april_1_cases_table2 <- april_1_cases_table2 %>%
   add_predictions(multi_model_mobility)
@@ -385,7 +400,7 @@ multi_mobility_r_square <- summary(multi_model_mobility)$r.squared
 
 ## Comparing R^2^ Values
 
-|Variable|Published|Our Estimate|
+|Variable|Published| Our Estimate|
 |:--:|:--:|:--:|
 |Multi Table 1|56%|`r round(multi_r_square * 100, 0) `%|
 |Multi Table 2|57%|`r round(multi2_r_square * 100, 0) `%|
