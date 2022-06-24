@@ -390,3 +390,75 @@ multi_mobility_r_square <- summary(multi_model_mobility)$r.squared
 |Multi Table 1|56%|`r round(multi_r_square * 100, 0) `%|
 |Multi Table 2|57%|`r round(multi2_r_square * 100, 0) `%|
 |Multi Table 2 + Mobility|57%|`r round(multi_mobility_r_square * 100, 0) `%|
+
+# Extension
+
+### Influence of Proportion of People who Take Public Transportation on COVID Positivity
+
+```{r}
+public <- master %>%
+  pivot_wider(names_from = variable, values_from = estimate) %>%
+  transmute(GEOID, Borough, NAME, geometry, public = total_public, total = total_transport) %>%
+  mutate(prop_public = public / total)
+
+median(public$prop_public, na.rm = TRUE)
+```
+
+```{r}
+ggplot(public, aes(fill = prop_public)) + 
+  geom_sf(aes(geometry = geometry)) + 
+  labs(title = "Proportion of Public Commuters") +
+  scale_fill_distiller(palette = "RdPu", 
+                       direction = 1) +
+  theme_void()
+```
+
+### Graphing Positivity Based on Zip
+
+```{r}
+zips_with_geom <- master %>% 
+  group_by(GEOID) %>%
+  summarize(count = n())
+
+april_1_cases <- april_1_cases %>%
+  inner_join(zips_with_geom, by = "GEOID") %>%
+  transmute(GEOID, Positive, Total, prop_pos, geometry)
+
+ggplot(april_1_cases, aes(fill = prop_pos)) + 
+  geom_sf(aes(geometry = geometry)) + 
+  labs(title = "Proportion of Covid Positivity") +
+  scale_fill_distiller(palette = "RdPu", 
+                       direction = 1) +
+  theme_void()
+```
+
+The biggest proportion of positivity is in Corona, Queens. This makes sense, as Corona is the most populous zipcode. 
+
+There is also greater positivity in areas of Queens near JFK airport, as these areas are also greatly populated. 
+
+We would expect to see greater positivity in Manhattan based on the proportion of public transport. However, it's possible many people in Manhattan went away during COVID, or the nature of job in Manhttan, such as those in finance and law, etc., are easier to work from home as opposed to those in lower income communities. These positions may also not be seen as "essential" in the same way as those of people in other zipcodes. Further analysis for this can be done if there is data on the proportion of people in these areas working from home during April. 
+
+# Regression Analysis
+
+```{r}
+april_1_cases_public <- inner_join(public, april_1_cases, by = "GEOID") %>%
+  transmute(GEOID, Borough, prop_public, prop_pos)
+
+public_model <- lm(prop_pos ~ prop_public, april_1_cases_public)
+
+april_1_cases_public <- april_1_cases_public %>%
+  add_predictions(public_model)
+
+public_r_square <- summary(public_model)$r.squared
+```
+
+### Comparing Bus to All Public Transport
+
+|Bus|Public|
+|:--:|:--:|
+|`r round(bus_r_square * 100, 0) `%|`r round(public_r_square * 100, 0) `%|
+
+The R^2^ value for all public transport is much smaller than the R^2^ for bus commuters. This would probably not be used in a multi-variate regression. 
+
+
+
