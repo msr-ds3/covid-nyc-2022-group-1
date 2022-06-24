@@ -21,5 +21,5 @@ In the Figure 1 section, we created six maps to replicate the Figure 1 maps in t
 
 In the Figure 2 section, we plotted the change in mobility in March and April, using February as a baseline. 
 
-We then performed the individual regressions that were mentioned in the articles and we replicated the muli-variate regression for April 1, 2020 cases from table 1 and 2. Included in our report is a comparison on how our R^2^ values compare to the values from the original article. 
+We then performed the individual regressions that were mentioned in the articles and we replicated the muli-variate regression for April 1, 2020 cases from table 1 and 2. Included in our report is a comparison on how our R^2 values compare to the values from the original article. 
 
