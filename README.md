@@ -21,5 +21,5 @@ We then performed the individual regressions that were mentioned in the articles
 
 ### Generating the Final Report
 
-- Use `Group_1_Final_Report.Rmd` to generate the final report with the maps and regressions. 
+- Use `04_Group_1_Final_Report.Rmd` to generate the final report with the maps and regressions. 
 
