@@ -22,4 +22,5 @@ We then performed the individual regressions that were mentioned in the articles
 ### Generating the Final Report
 
 - Use `04_Group_1_Final_Report.Rmd` to generate the final report with the maps and regressions. 
+- [Link to Knitted HTML](http://htmlpreview.github.io/?https://github.com/msr-ds3/covid-nyc-2022-group-1/blob/main/Group_1_Final_Report.html)
 
